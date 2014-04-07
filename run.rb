@@ -81,8 +81,17 @@ __END__
 %html
   %head
     %title Tinywiki
-  %body
-    = yield
+    %link{ rel: 'stylesheet',
+      href: '//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css' }
+    %link{ rel: 'stylesheet',
+      href: '//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap-theme.min.css' }
+    %script{ src: '//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js' }
+    :css
+      textarea { width: 100%; height: 80%; }
+
+  %body{ role: 'document' }
+    .container.main{ role: 'main' }
+      = yield
 
 @@ show
 #edit-link
@@ -96,6 +105,6 @@ __END__
 #main-wrapper
   %form{ method: 'post' }
     = csrf_tag
-    %textarea{ name: 'content' }
-      = content
+    #editor
+      %textarea{ name: 'content' }= content
     %button Save/Update
