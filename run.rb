@@ -31,6 +31,19 @@ helpers do
   def sanitize(path)
     path.gsub(/[^\da-zA-Z\-\/]/, '').gsub('/edit','')
   end
+
+  def breadcrumb(path)
+    words = path.split('/')
+    words[0..-1].each_with_index.map { |_, i| words[0..i].join('/') }
+  end
+
+  def title(path)
+    last_path_element(path).capitalize
+  end
+
+  def last_path_element(path)
+    path.split('/').last.split('#').first
+  end
 end
 
 class Page
@@ -80,7 +93,7 @@ __END__
 @@ layout
 %html
   %head
-    %title Tinywiki
+    %title= title(name) rescue "Sinatra's handbook"
     %link{ rel: 'stylesheet',
       href: '//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css' }
     %link{ rel: 'stylesheet',
@@ -91,10 +104,15 @@ __END__
 
   %body{ role: 'document' }
     .container.main{ role: 'main' }
+      #breadcrumb.pull-left
+        - breadcrumb(name).each do |name|
+          - unless name.empty?
+            %a{ href: name }= "&gt; #{ last_path_element(name) }"
+
       = yield
 
 @@ show
-#edit-link
+#edit-link.pull-right
   %a{ href: "#{name}/edit" } Edit
 #main-wrapper
   = find_and_preserve markdown(content)
