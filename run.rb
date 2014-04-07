@@ -2,6 +2,8 @@ require 'sinatra'
 require 'haml'
 require 'redcarpet'
 require 'mongoid'
+require 'securerandom'
+require 'rack/csrf'
 
 # Env vars
 ENV['MONGOHQ_URL'] ||= 'mongodb://localhost:27017/this_wiki'
@@ -12,6 +14,23 @@ configure do
   end
 
   Mongoid.raise_not_found_error = false
+
+  use Rack::Session::Cookie, secret: SecureRandom.hex
+  use Rack::Csrf, raise: true
+end
+
+helpers do
+  def csrf_token
+    Rack::Csrf.csrf_token(env)
+  end
+
+  def csrf_tag
+    Rack::Csrf.csrf_tag(env)
+  end
+
+  def sanitize(path)
+    path.gsub(/[^\da-zA-Z\-\/]/, '').gsub('/edit','')
+  end
 end
 
 class Page
@@ -19,10 +38,6 @@ class Page
 
   field :name
   field :content
-end
-
-def sanitize(path)
-  path.gsub(/[^\da-zA-Z\-\/]/, '').gsub('/edit','')
 end
 
 # Clean path to use as name
@@ -80,6 +95,7 @@ __END__
 
 #main-wrapper
   %form{ method: 'post' }
+    = csrf_tag
     %textarea{ name: 'content' }
       = content
     %button Save/Update
