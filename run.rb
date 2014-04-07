@@ -97,7 +97,7 @@ __END__
 #edit-link
   %a{ href: "#{name}/edit" } Edit
 #main-wrapper
-  = markdown content
+  = find_and_preserve markdown(content)
 
 @@ update
 %h1= "Create/Edit #{name}"
