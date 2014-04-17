@@ -4,54 +4,10 @@ require 'redcarpet'
 require 'mongoid'
 require 'securerandom'
 require 'rack/csrf'
+require './helpers'
+require './persistance'
 
-# Env vars
-ENV['MONGOHQ_URL'] ||= 'mongodb://localhost:27017/this_wiki'
-
-configure do
-  Mongoid.configure do |config|
-    config.sessions = { default: { uri: ENV['MONGOHQ_URL'] } }
-  end
-
-  Mongoid.raise_not_found_error = false
-
-  use Rack::Session::Cookie, secret: SecureRandom.hex
-  use Rack::Csrf, raise: true
-end
-
-helpers do
-  def csrf_token
-    Rack::Csrf.csrf_token(env)
-  end
-
-  def csrf_tag
-    Rack::Csrf.csrf_tag(env)
-  end
-
-  def sanitize(path)
-    path.gsub(/[^\da-zA-Z\-\/]/, '').gsub('/edit','')
-  end
-
-  def breadcrumb(path)
-    words = path.split('/')
-    words[0..-1].each_with_index.map { |_, i| words[0..i].join('/') }
-  end
-
-  def title(path)
-    last_path_element(path).capitalize
-  end
-
-  def last_path_element(path)
-    path.split('/').last.split('#').first
-  end
-end
-
-class Page
-  include Mongoid::Document
-
-  field :name
-  field :content
-end
+use Rack::MethodOverride
 
 # Clean path to use as name
 before do
@@ -59,7 +15,11 @@ before do
 end
 
 # Routes
-get '*/edit' do
+get '/favicon.ico' do
+  status 404
+end
+
+get '*-edit' do
   page = Page.find_by(name: @path)
 
   if page
@@ -77,6 +37,12 @@ get '*' do
   else
     haml :update, locals: { name: @path, content: '' }
   end
+end
+
+post '*-delete' do
+  Page.find_by(name: @path).destroy
+
+  redirect '/'
 end
 
 post '*' do
@@ -101,19 +67,33 @@ __END__
     %script{ src: '//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js' }
     :css
       textarea { width: 100%; height: 80%; }
+      .navbar  { margin-bottom: 0; min-height: 0; }
 
   %body{ role: 'document' }
-    .container.main{ role: 'main' }
+    .nav.navbar
+      #navigation
+        - navigation.each do |navigation_item|
+          %a{ href: navigation_item.name }= title(navigation_item.name)
+          &nbsp;|&nbsp;
+      %hr
+
       #breadcrumb.pull-left
         - breadcrumb(name).each do |name|
           - unless name.empty?
             %a{ href: name }= "&gt; #{ last_path_element(name) }"
+      #edit-link.pull-right
+        %a{ href: "#{name}-edit" } Edit
+      #delete-link.pull-right
+        %form{ method: 'post', action: "#{name}-delete" }
+          = csrf_tag
+          %button Delete
 
+    .container.main{ role: 'main' }
       = yield
 
+    %footer
+
 @@ show
-#edit-link.pull-right
-  %a{ href: "#{name}/edit" } Edit
 #main-wrapper
   = find_and_preserve markdown(content)
 
